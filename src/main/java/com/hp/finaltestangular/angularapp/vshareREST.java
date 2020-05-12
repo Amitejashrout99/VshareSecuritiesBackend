@@ -2,6 +2,9 @@ package com.hp.finaltestangular.angularapp;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.query.Param;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +45,8 @@ public class vshareREST
     @Autowired
     forum_answer_db_repo forum_answer_db_repo_object;
 
-
+    @Autowired
+    user_kyc_data_repo user_kyc_data_repo_object;
 
 
     @GetMapping(path="verify_user/{user_name}")
@@ -70,6 +74,39 @@ public class vshareREST
     {
         List<user> data= usrepo.findAll();
         return data;
+    }
+
+    @GetMapping(path = "checkAvailability/{user_name}",produces = {"application/json"})
+    @ResponseBody
+    boolean checkUsernameAvailability(@PathVariable("user_name") String username)
+    {
+        int status= usrepo.checkUsernameAvailabilityStatus(username);
+        if(status==1)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    @PostMapping(path="add_user",consumes = "application/json")
+    @ResponseBody
+    user addNewUser(@RequestBody user new_user_object)
+    {
+        usrepo.save(new_user_object);
+
+        return new_user_object;
+    }
+
+    @PostMapping(path="add_user_credentials",consumes = "application/json")
+    @ResponseBody
+    users addNewUserCredentials(@RequestBody users new_user_credentials_object)
+    {
+        repo.save(new_user_credentials_object);
+
+        return new_user_credentials_object;
     }
 
     @GetMapping(path="getUserById/{uid}",produces = {"application/json"})
@@ -227,24 +264,48 @@ public class vshareREST
 
     @GetMapping(path="BoughtStockReviews/{bought_stock_ids}",produces = {"application/json"})
     @ResponseBody
-    List<stock_reviews>findBoughtStockReviews(@PathVariable("bought_stock_ids") List<Integer> stock_ids)
+    ResponseEntity<List<stock_reviews>>findBoughtStockReviews(@PathVariable("bought_stock_ids") List<Integer> stock_ids)
     {
-        List<stock_reviews> data= stock_reviews_repo_object.findBoughtStockReviews(stock_ids);
+        if(stock_ids.size()==1 && stock_ids.get(0)==-1)
+        {
+            List<stock_reviews> temp= new ArrayList<>();
+            temp.add(new stock_reviews(0,0,"",0,"",0));
+            return new ResponseEntity<List<stock_reviews>>(temp,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            List<stock_reviews> data= stock_reviews_repo_object.findBoughtStockReviews(stock_ids);
 
-        return data;
+            return new ResponseEntity<List<stock_reviews>>(data,HttpStatus.OK);
+        }
+
     }
 
     @GetMapping(path = "getPendingReviewsForUser/{user_id}/{bought_stock_ids}",produces = {"application/json"})
     @ResponseBody
-    List<Integer> findPendingReviewsForUser(@PathVariable("user_id") int userid,
+    ResponseEntity<List<Integer>> findPendingReviewsForUser(@PathVariable("user_id") int userid,
                                             @PathVariable("bought_stock_ids")List<Integer> stock_ids)
     {
+        if(stock_ids.size()==1 && stock_ids.get(0)==-1)
+        {
+            HttpHeaders headers= new HttpHeaders();
+            headers.add("No Item Found","bad-request");
+            return new ResponseEntity<List<Integer>>(stock_ids,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            List<Integer> data= user_reviews_track_repo_object.findPendingReviewsByUser(stock_ids,userid);
 
-        List<Integer> data= user_reviews_track_repo_object.findPendingReviewsByUser(stock_ids,userid);
+            stock_ids.removeAll(data);
+
+            return new ResponseEntity<List<Integer>>(stock_ids,HttpStatus.OK);
+        }
+
+        /*List<Integer> data= user_reviews_track_repo_object.findPendingReviewsByUser(stock_ids,userid);
 
         stock_ids.removeAll(data);
 
-        return stock_ids;
+        return stock_ids;*/
 
     }
 
@@ -403,7 +464,7 @@ public class vshareREST
         return main_list;
     }
 
-    @GetMapping(path="getStockRecommendations/{stock_id}",produces = "application/json")
+    @GetMapping(path="getStockRecommendations/{stock_id}",produces = {"application/json"})
     @ResponseBody
     List<stock_recommendations_dto> recommended_stocks(@PathVariable("stock_id") int stock_id)
     {
@@ -456,6 +517,39 @@ public class vshareREST
     }
 
 
+    @PutMapping(path="updateKYCStatus/{user_id}",produces = {"application/json"})
+    @ResponseBody
+    user updateKYCStatus(@PathVariable("user_id") int uid, @RequestBody user obj)
+    {
+        return usrepo.findById(uid)
+                .map(user_obj->{
+                    user_obj.setKyc_status("true");
+                    return usrepo.save(user_obj);
+                })
+                .orElseGet(()->{
+                    user new_user= new user(0,"",0,"","","","");
+                    return usrepo.save(new_user);
+                });
+    }
 
+    @PostMapping(path = "postKYCData",consumes = {"application/json"})
+    @ResponseBody
+    user_kyc_data saveKYCData(@RequestBody user_kyc_data kyc_data_object)
+    {
+        user_kyc_data_repo_object.save(kyc_data_object);
+
+        return kyc_data_object;
+    }
+
+    @GetMapping(path="getKYCData/{user_id}",produces = {"application/json"})
+    @ResponseBody
+    user_kyc_data getKYCData(@PathVariable("user_id") int user_id)
+    {
+        user_kyc_data kyc_data_of_user= user_kyc_data_repo_object.findById(user_id)
+                .orElse(new user_kyc_data(0,"","","","","","","","","","","","","",0));
+
+        return kyc_data_of_user;
+
+    }
 
 }

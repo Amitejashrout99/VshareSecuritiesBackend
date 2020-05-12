@@ -10,4 +10,8 @@ public interface userrepo extends JpaRepository<user,Integer>
 {
     @Query("from user where name= :name")
     user find_id_of_user(@Param("name") String username);
+
+    @Query("select count(name) from user where name=:username")
+    int checkUsernameAvailabilityStatus(@Param("username")String username);
+
 }
