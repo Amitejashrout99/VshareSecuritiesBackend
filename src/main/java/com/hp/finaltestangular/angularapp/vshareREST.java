@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.function.ServerRequest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,22 +49,26 @@ public class vshareREST
     @Autowired
     user_kyc_data_repo user_kyc_data_repo_object;
 
+    @Autowired
+    admin_credentials_repo admin_credentials_repo_object;
 
-    @GetMapping(path="verify_user/{user_name}")
+    @PostMapping(path="verify_user",consumes = {"application/json"})
     @ResponseBody
-    users verify_user(@PathVariable("user_name")String username)
+    ResponseEntity<users> verify_user(@RequestBody users credentials_object)
     {
 
-        users us= repo.find_user(username);
-        if(us==null)
+        users object= repo.findById(credentials_object.getUsername()).orElse(new users("",""));
+        if(object.getUsername().equals(""))
         {
-            users false_response= new users("","");
-            return false_response;
+            return new ResponseEntity<users>(object,HttpStatus.NOT_FOUND);
+        }
+        else if(!credentials_object.getPassword().equals(object.getPassword()))
+        {
+            return new ResponseEntity<users>(object,HttpStatus.BAD_REQUEST);
         }
         else
         {
-            System.out.println("Hit made");
-            return us;
+            return new ResponseEntity<users>(object,HttpStatus.OK);
         }
 
     }
@@ -115,6 +120,46 @@ public class vshareREST
     {
         user data= usrepo.findById(user_id).orElse(new user(0," ",0," "," "," ",""));
         return data;
+    }
+
+    @GetMapping(path = "checkAdminStatus/{user_name}",produces = {"application/json"})
+    @ResponseBody
+    ResponseEntity<Integer> checkAdminStatus(@PathVariable("user_name") String username)
+    {
+        int status= admin_credentials_repo_object.checkAdminOrNot(username);
+
+        if(status==0)
+        {
+            return new ResponseEntity<Integer>(status,HttpStatus.FORBIDDEN);
+        }
+        else
+        {
+            return  new ResponseEntity<Integer>(status,HttpStatus.OK);
+        }
+
+    }
+
+    @PostMapping(path="verifyAdminCredentials", consumes= {"application/json"})
+    @ResponseBody
+    ResponseEntity<admin_credentials> verifyCredentials(@RequestBody admin_credentials credentials)
+    {
+        admin_credentials obj= admin_credentials_repo_object.findById(credentials.admin_username).orElse(new admin_credentials("",""));
+
+        if(obj.admin_username.equals(""))
+        {
+            return new ResponseEntity<admin_credentials>(obj,HttpStatus.NOT_FOUND);
+        }
+        else if(!obj.admin_password.equals(credentials.admin_password))
+        {
+            HttpHeaders headers= new HttpHeaders();
+            headers.add("password_status","wrong");
+            return new ResponseEntity<admin_credentials>(obj,headers,HttpStatus.UNAUTHORIZED);
+        }
+        else
+        {
+            return new ResponseEntity<admin_credentials>(obj,HttpStatus.OK);
+        }
+
     }
 
     @GetMapping(path = "allStocks",produces = {"application/json"})
