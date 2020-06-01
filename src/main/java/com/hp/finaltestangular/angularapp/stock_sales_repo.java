@@ -38,5 +38,7 @@ public interface stock_sales_repo extends JpaRepository<stock_sales,Integer>
     nativeQuery=true)
     int calculateNumberOfTimesStockSold(@Param("stock_id") int stock_id);
 
+    @Query("select count(stock_sale_id) from stock_sales where stock_id=:stock_id")
+    int checkStockBoughtOrNot(@Param("stock_id") int stock_id);
 
 }
