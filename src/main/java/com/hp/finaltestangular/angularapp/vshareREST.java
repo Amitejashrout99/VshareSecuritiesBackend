@@ -120,6 +120,14 @@ public class vshareREST {
 
     }
 
+    @PostMapping(path="createFBUserCredentials",consumes = {"application/json"})
+    @ResponseBody
+    ResponseEntity<users> createCredentialsForFBUser(@RequestBody users new_user)
+    {
+       repo.save(new_user);
+       return new ResponseEntity<users>(new_user,HttpStatus.ACCEPTED);
+    }
+
     @PostMapping(path = "verifyAdminCredentials", consumes = {"application/json"})
     @ResponseBody
     ResponseEntity<admin_credentials> verifyCredentials(@RequestBody admin_credentials credentials) {
@@ -135,6 +143,21 @@ public class vshareREST {
             return new ResponseEntity<admin_credentials>(obj, HttpStatus.OK);
         }
 
+    }
+
+    @GetMapping(path="verifyFacebookCredentials/{fb_id}",produces = {"application/json"})
+    @ResponseBody
+    ResponseEntity<users> checkFacebookCredentials(@PathVariable("fb_id") String facebook_id)
+    {
+        users obj=repo.findById(facebook_id).orElse(new users("",""));
+        if(obj.getUsername().equals(""))
+        {
+            return new ResponseEntity<users>(obj,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            return new ResponseEntity<users>(obj,HttpStatus.OK);
+        }
     }
 
     @GetMapping(path = "allStocks", produces = {"application/json"})
@@ -220,10 +243,17 @@ public class vshareREST {
 
     @GetMapping(path = "getBoughtStocks/{uid}", produces = {"application/json"})
     @ResponseBody
-    List<stock_sales> allBoughtStocks(@PathVariable("uid") int user_id) {
+    ResponseEntity<List<stock_sales>> allBoughtStocks(@PathVariable("uid") int user_id) {
         List<stock_sales> boughtStockList = stock_sales_repo_object.findBoughtStocks(user_id);
 
-        return boughtStockList;
+        if(boughtStockList.size()==0)
+        {
+            return new ResponseEntity<>(boughtStockList,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            return new ResponseEntity<>(boughtStockList,HttpStatus.OK);
+        }
     }
 
     @PutMapping(path = "updateStockSaleData/{stock_sale_id}", produces = {"application/json"})
@@ -254,18 +284,32 @@ public class vshareREST {
 
     @GetMapping(path = "getAllBoughtStocks/{user_id}", produces = {"application/json"})
     @ResponseBody
-    List<stock_sales> findAllBoughtStocks(@PathVariable("user_id") int userid) {
+    ResponseEntity<List<stock_sales>> findAllBoughtStocks(@PathVariable("user_id") int userid) {
         List<stock_sales> all_bought_stocks = stock_sales_repo_object.findAllBoughtStocks(userid);
 
-        return all_bought_stocks;
+        if(all_bought_stocks.size()==0)
+        {
+            return new ResponseEntity<>(all_bought_stocks,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            return new ResponseEntity<>(all_bought_stocks,HttpStatus.OK);
+        }
     }
 
     @GetMapping(path = "getAllSoldStocks/{user_id}", produces = {"application/json"})
     @ResponseBody
-    List<stock_sales> findAllSoldStocks(@PathVariable("user_id") int userid) {
+    ResponseEntity<List<stock_sales>> findAllSoldStocks(@PathVariable("user_id") int userid) {
         List<stock_sales> all_sold_stocks = stock_sales_repo_object.findAllSoldStocks(userid);
 
-        return all_sold_stocks;
+        if(all_sold_stocks.size()==0)
+        {
+            return new ResponseEntity<>(all_sold_stocks,HttpStatus.NOT_FOUND);
+        }
+        else
+        {
+            return new ResponseEntity<>(all_sold_stocks,HttpStatus.OK);
+        }
     }
 
     @GetMapping(path = "BoughtStockReviews/{bought_stock_ids}", produces = {"application/json"})
